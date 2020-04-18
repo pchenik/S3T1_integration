@@ -67,11 +67,7 @@ def aitken(s0, s1, s2, L):
     """
 
     x = abs((math.log(abs((s1 - s0) / (s1 - s2)))) / math.log(L))
-    #x = -(math.log(abs((s2 - s1) / (s1 - s0)))) / math.log(L)
-    # if x is None or abs(x - 4) > 2:
-    #     print(s0, ' ', s1, ' ', s2, ' ', L)
     return x
-    #not sure about floor
 
     raise NotImplementedError
 
@@ -84,22 +80,13 @@ def quad(func, x0, x1, xs, **kwargs):
     **kwargs passed to moments()
     """
 
-    CONST = 10 ** 6
     s = len(xs)
 
     X = np.array([[xs[j] ** i for j in range(s)] for i in range(s)])
-    #print(kwargs)
     u = np.array(moments(s - 1, x0, x1, a=kwargs.setdefault('a', 0), b=kwargs.setdefault('b', 0),
                          alpha=kwargs.setdefault('alpha', 0), beta=kwargs.setdefault('beta', 0)))
-    #print(u)
-    # if np.linalg.det(X) == 0:
-    #     print(X)
 
-    # X = X * CONST
-    # u = u * CONST
     A = np.linalg.solve(X, u)
-    #A, rnorm = nnls(X, u)
-    #print(A)
 
     ans = 0
     for i in range(0, s):
@@ -110,7 +97,7 @@ def quad(func, x0, x1, xs, **kwargs):
     raise NotImplementedError
 
 
-def newton_cotes(func, x0, x1, n, **kwargs):
+def equal_coeff(func, x0, x1, n, **kwargs):
     u = moments(n, x0, x1, a=kwargs.setdefault('a', 0), b=kwargs.setdefault('b', 0),
                 alpha=kwargs.setdefault('alpha', 0), beta=kwargs.setdefault('beta', 0))
     d = np.array([-n * u[i] / u[0] for i in range(1, n + 1)])
@@ -152,17 +139,12 @@ def quad_gauss(func, x0, x1, n, **kwargs):
     n: number of nodes
     """
 
-    CONST = 10 ** 6
-
     u = moments(2 * n - 1, x0, x1, a=kwargs.setdefault('a', 0), b=kwargs.setdefault('b', 0),
     alpha=kwargs.setdefault('alpha', 0), beta=kwargs.setdefault('beta', 0))
-
 
     U = np.array([[u[j + i] for j in range(n)] for i in range(n)])
 
     b = np.array([-u[n + i] for i in range(n)])
-    # U = U * CONST
-    # b = b * CONST
 
     if np.linalg.det(U) == 0:
         # print(np.linalg.det(U))
@@ -172,28 +154,16 @@ def quad_gauss(func, x0, x1, n, **kwargs):
         # print(U)
         # print('done\n')
         #return quad_gauss(func, x0, x1, n - 1, **kwargs)
-        return newton_cotes(func, x0, x1, n ** 3, **kwargs)
-        #return quad_s(func, [x0, x1], n ** 5)
+        #return equal_coeff(func, x0, x1, n ** 3, **kwargs)
+        return quad_s(func, [x0, x1], n)
         #return quad(func, x0, x1, [x0 + i * ((x1 - x0) / (n ** 2 + 1)) for i in range(n ** 2 + 2)], **kwargs)
-        # return (x1 - x0) * func((x0 + x1) / 2)
 
 
     a = np.linalg.solve(U, b)
-    #a, rnorm = nnls(U, b)
-
-
     a = np.append(a, [1])
     coeff = a[::-1]
-
     xs = np.roots(coeff)
-
-    #print(xs)
-
     xs = np.sort(xs)
-    for x in xs:
-     if np.iscomplex(x):
-       print("KEK")
-
     return quad(func, x0, x1, xs, **kwargs)
 
     raise NotImplementedError
@@ -212,8 +182,8 @@ def composite_quad(func, x0, x1, n_intervals, n_nodes, **kwargs):
     x = x0
 
     while x + eps < x1:
-        ans += newton_cotes(func, x, x + h, n_nodes, **kwargs)
-        # ans += quad(func, x, x + h, [x + i * (h / (n_nodes + 1)) for i in range(n_nodes + 2)], **kwargs)
+        #ans += equal_coeff(func, x, x + h, n_nodes, **kwargs)
+        ans += quad(func, x, x + h, [x + i * (h / (n_nodes - 1)) for i in range(n_nodes)], **kwargs)
         #ans += quad_gauss(func, x, x + h, n_nodes, **kwargs)
         x += h
 
@@ -251,68 +221,3 @@ def integrate(func, x0, x1, tol):
     return s1, eps
 
     raise NotImplementedError
-
-
-# x0, x1 = 1, 3
-# alpha = 0.14
-# beta = 0.88
-# p = Monome(1)
-# xs = np.linspace(x0, x1, 6)[1:-1]
-# print(xs)
-# res = quad(p, x0, x1, xs, a=x0, alpha=alpha)
-# print(res)
-
-#print(composite_quad(lambda x: x * x, 0, 1, 1000, 3, alpha=0, beta=0))
-#print(integrate(lambda x: math.sin(x), 0, math.pi, 0.0000000001))
-
-# x0, x1 = 0, 1
-# L = 2
-# n_intervals = [L ** q for q in range(0, 8)]
-# p = Monome(5)
-# Y = [composite_quad(p, x0, x1, n_intervals=n, n_nodes=5) for n in n_intervals]
-# print(Y)
-# #exact = sp_quad(lambda x: p(x) / (x)**0.83, x0, x1)[0]
-# #accuracy = get_log_error(Y, exact * np.ones_like(Y))
-# accuracy = get_log_error(Y, p[x0, x1] * np.ones_like(Y))
-# print(p[x0, x1] * np.ones_like(Y))
-# print(p[x0, x1])
-# print(accuracy)
-
-
-
-# a, b, alpha, beta, f = params(6)
-# x0, x1 = a, b
-# # a, b = -10, 10
-# print(a)
-# print(b)
-# print(alpha)
-# print(beta)
-# exact = sp_quad(lambda x: f(x) / (x-a)**alpha / (b-x)**beta, x0, x1)[0]
-# print(exact)
-# # plot weights
-# xs = np.linspace(x0, x1, 101)[1:-1]
-# print(xs)
-# ys = 1 / ((xs - a) ** alpha * (b - xs) ** beta)
-# print(ys)
-#
-# L = 2
-# n_intervals = [L ** q for q in range(2, 10)]
-# n_nodes = 3
-# Y = [composite_quad(f, x0, x1, n_intervals=n, n_nodes=n_nodes,
-#                     a=a, b=b, alpha=alpha, beta=beta) for n in n_intervals]
-# accuracy = get_log_error(Y, exact * np.ones_like(Y))
-# x = np.log10(n_intervals)
-# aitken_degree = aitken(*Y[5:8], L)
-
-
-
-
-# x0, x1 = 0, 1
-# max_degree = 7
-# p = Monome(5)
-# y0 = p[x0, x1]
-# max_node_count = range(1, max_degree+1)
-# Y = [quad(p, x0, x1, np.linspace(x0, x1, node_count)) for node_count in max_node_count]
-# accuracy = get_log_error(Y, y0 * np.ones_like(Y))
-
-#print(moments(3, 1.3, 2.2, 1.3, 2.2, beta=0.833))
