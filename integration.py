@@ -66,7 +66,7 @@ def aitken(s0, s1, s2, L):
     return: accuracy degree estimation
     """
 
-    x = abs((math.log(abs((s1 - s0) / (s1 - s2)))) / math.log(L))
+    x = abs((math.log(abs((s1 - s0) / (s1 - s2)))) / np.log(L))
     return x
 
     raise NotImplementedError
@@ -82,9 +82,9 @@ def quad(func, x0, x1, xs, **kwargs):
 
     s = len(xs)
 
-    X = np.array([[xs[j] ** i for j in range(s)] for i in range(s)])
-    u = np.array(moments(s - 1, x0, x1, a=kwargs.setdefault('a', 0), b=kwargs.setdefault('b', 0),
-                         alpha=kwargs.setdefault('alpha', 0), beta=kwargs.setdefault('beta', 0)))
+    #X = np.array([[xs[j] ** i for j in range(s)] for i in range(s)])
+    X = np.vander(xs, increasing=True).T
+    u = np.array(moments(s - 1, x0, x1, **kwargs))
 
     A = np.linalg.solve(X, u)
 
@@ -98,8 +98,7 @@ def quad(func, x0, x1, xs, **kwargs):
 
 
 def equal_coeff(func, x0, x1, n, **kwargs):
-    u = moments(n, x0, x1, a=kwargs.setdefault('a', 0), b=kwargs.setdefault('b', 0),
-                alpha=kwargs.setdefault('alpha', 0), beta=kwargs.setdefault('beta', 0))
+    u = moments(n, x0, x1, **kwargs)
     d = np.array([-n * u[i] / u[0] for i in range(1, n + 1)])
     U = [[0 for j in range(n)] for i in range(n)]
     for i in range(1, n):
@@ -139,20 +138,11 @@ def quad_gauss(func, x0, x1, n, **kwargs):
     n: number of nodes
     """
 
-    u = moments(2 * n - 1, x0, x1, a=kwargs.setdefault('a', 0), b=kwargs.setdefault('b', 0),
-    alpha=kwargs.setdefault('alpha', 0), beta=kwargs.setdefault('beta', 0))
-
+    u = moments(2 * n - 1, x0, x1, **kwargs)
     U = np.array([[u[j + i] for j in range(n)] for i in range(n)])
-
     b = np.array([-u[n + i] for i in range(n)])
 
     if np.linalg.det(U) == 0:
-        # print(np.linalg.det(U))
-        # print(b)
-        # print(u)
-        # print(x0, ' ', x1, ' ', n, ' ', kwargs)
-        # print(U)
-        # print('done\n')
         #return quad_gauss(func, x0, x1, n - 1, **kwargs)
         #return equal_coeff(func, x0, x1, n ** 3, **kwargs)
         return quad_s(func, [x0, x1], n)
@@ -178,14 +168,12 @@ def composite_quad(func, x0, x1, n_intervals, n_nodes, **kwargs):
 
     h = (x1 - x0) / n_intervals
     ans = 0
-    eps = 1e-9
-    x = x0
+    xs = np.linspace(x0, x1, n_intervals + 1)
 
-    while x + eps < x1:
+    for i, x in enumerate(xs[:-1]):
         #ans += equal_coeff(func, x, x + h, n_nodes, **kwargs)
-        ans += quad(func, x, x + h, [x + i * (h / (n_nodes - 1)) for i in range(n_nodes)], **kwargs)
+        ans += quad(func, x, x + h, np.linspace(x, x + h, n_nodes), **kwargs)
         #ans += quad_gauss(func, x, x + h, n_nodes, **kwargs)
-        x += h
 
     return ans
 
