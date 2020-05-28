@@ -82,7 +82,6 @@ def quad(func, x0, x1, xs, **kwargs):
 
     s = len(xs)
 
-    #X = np.array([[xs[j] ** i for j in range(s)] for i in range(s)])
     X = np.vander(xs, increasing=True).T
     u = np.array(moments(s - 1, x0, x1, **kwargs))
 
@@ -96,41 +95,6 @@ def quad(func, x0, x1, xs, **kwargs):
 
     raise NotImplementedError
 
-
-def equal_coeff(func, x0, x1, n, **kwargs):
-    u = moments(n, x0, x1, **kwargs)
-    d = np.array([-n * u[i] / u[0] for i in range(1, n + 1)])
-    U = [[0 for j in range(n)] for i in range(n)]
-    for i in range(1, n):
-        for j in range(i):
-            U[i][j] = n * u[i - j] / u[0]
-
-    for i in range(n):
-        U[i][i] = i + 1
-
-    U = np.array(U)
-
-    a = np.linalg.solve(U, d)
-
-    a = np.insert(a, 0, 1)
-
-    xs = np.roots(a)
-    Cn = u[0] / n
-    ans = 0
-    for i in range(n):
-        ans += func(xs[i])
-
-    return Cn * ans
-
-
-def quad_s(f, x, n):
-    h = (x[1] - x[0]) / n
-    xs = np.linspace(x[0], x[1], n+1)
-    xs_m = xs[:-1] + h/2
-    fs = f(xs)
-    fs_m = f(xs_m)
-    return (np.sum(fs[:-1]) + 4*np.sum(fs_m) + np.sum(fs[1:])) * h /6
-
 def quad_gauss(func, x0, x1, n, **kwargs):
     """
     func: function to integrate
@@ -141,13 +105,6 @@ def quad_gauss(func, x0, x1, n, **kwargs):
     u = moments(2 * n - 1, x0, x1, **kwargs)
     U = np.array([[u[j + i] for j in range(n)] for i in range(n)])
     b = np.array([-u[n + i] for i in range(n)])
-
-    if np.linalg.det(U) == 0:
-        #return quad_gauss(func, x0, x1, n - 1, **kwargs)
-        #return equal_coeff(func, x0, x1, n ** 3, **kwargs)
-        return quad_s(func, [x0, x1], n)
-        #return quad(func, x0, x1, [x0 + i * ((x1 - x0) / (n ** 2 + 1)) for i in range(n ** 2 + 2)], **kwargs)
-
 
     a = np.linalg.solve(U, b)
     a = np.append(a, [1])
@@ -171,9 +128,7 @@ def composite_quad(func, x0, x1, n_intervals, n_nodes, **kwargs):
     xs = np.linspace(x0, x1, n_intervals + 1)
 
     for i, x in enumerate(xs[:-1]):
-        #ans += equal_coeff(func, x, x + h, n_nodes, **kwargs)
         ans += quad(func, x, x + h, np.linspace(x, x + h, n_nodes), **kwargs)
-        #ans += quad_gauss(func, x, x + h, n_nodes, **kwargs)
 
     return ans
 
@@ -191,9 +146,8 @@ def integrate(func, x0, x1, tol):
     s0 = s1 = s2 = 0
     eps = 1
     n_nodes = 3
-    ans = 0.5
 
-    while (eps > tol):
+    while eps > tol:
         h1, h2, h3 = h, h / L, h / L ** 2
 
         s0 = composite_quad(func, x0, x1, round((x1 - x0) / h1), n_nodes, alpha=0, beta=0)
@@ -201,11 +155,10 @@ def integrate(func, x0, x1, tol):
         s2 = composite_quad(func, x0, x1, round((x1 - x0) / h3), n_nodes, alpha=0, beta=0)
         m = aitken(s0, s1, s2, L)
         eps = max(runge(s0, s1, m, L))
-        print(eps)
 
         h = h1 * (tol / abs(s0)) ** (1 / m)
         h *= 0.95
 
-    return s1, eps
+    return s0, eps
 
     raise NotImplementedError
